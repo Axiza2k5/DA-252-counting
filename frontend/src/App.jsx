@@ -18,7 +18,7 @@ const ShrimpCounterPWA = () => {
       
       setResult({ 
         total: mockCount,
-        message: "Phát hiện tôm giống thành công (Mock Mode)" 
+        message: "Phát hiện cá giống thành công (Mock Mode)" 
       });
       setLoading(false);
     }, 2000);
@@ -36,7 +36,7 @@ const ShrimpCounterPWA = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Header */}
       <header className="bg-blue-600 text-white p-4 shadow-lg flex justify-between items-center">
-        <h1 className="text-xl font-bold uppercase tracking-tight">Shrimp AI Count</h1>
+        <h1 className="text-xl font-bold uppercase tracking-tight">Fish AI Count</h1>
         <div className="text-xs bg-blue-500 px-2 py-1 rounded-full">v1.0.0-Beta</div>
       </header>
 
@@ -66,7 +66,7 @@ const ShrimpCounterPWA = () => {
         <div className="mt-8 w-full max-w-md text-center">
           {loading ? (
             <div className="flex items-center justify-center gap-2 text-blue-600 font-medium animate-pulse">
-              <RefreshCw className="animate-spin" /> Đang đếm tôm...
+              <RefreshCw className="animate-spin" /> Đang đếm cá...
             </div>
           ) : result ? (
             <div className="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-green-500">
@@ -77,7 +77,7 @@ const ShrimpCounterPWA = () => {
               </div>
             </div>
           ) : (
-            <p className="text-slate-400 italic">Vui lòng chụp ảnh khay tôm từ trên xuống</p>
+            <p className="text-slate-400 italic">Vui lòng chụp ảnh khay cá từ trên xuống</p>
           )}
         </div>
       </main>
