@@ -31,12 +31,15 @@ Dành cho các nhà phát triển muốn clone repository này và chạy thử 
    ```bash
    pip install -r requirements.txt
    ```
-4. Copy file mạng Neural YOLO (`best.pt`) của bạn thả trực tiếp vào thư mục `backend/`.
-5. Khởi động server suy luận FastAPI:
+4. (Tuỳ chọn) Cấu hình biến môi trường:
+   - Dễ dàng thay đổi cấu hình bằng cách copy file `backend/.env.example` thành `backend/.env`
+   - Chỉnh sửa file `.env` (Ví dụ đổi PORT sang số khác nếu port 8000 bị trùng).
+5. Copy file mạng Neural YOLO (`best.pt`) của bạn thả trực tiếp vào thư mục `backend/`.
+6. Khởi động server suy luận FastAPI:
    ```bash
    uvicorn main:app --reload
    ```
-   *Terminal chớp nháy và API giờ sẽ lắng nghe và chờ xử lý ảnh ở `http://127.0.0.1:8000`*
+   *Terminal chớp nháy và API giờ sẽ tự động được gán vào `PORT` đã thiết lập (mặc định là `http://127.0.0.1:8000`)*
 
 ---
 
@@ -61,7 +64,7 @@ Mục đích là để Vercel trên Internet có thể gọi xuống máy tính 
    npm install
    ```
 3. Tạo file biến môi trường trung gian hệ thống:
-   - Tạo file chỉ có tên `.env` nằm trong lòng thư mục `frontend/`
+   - Copy file `frontend/.env.example` đổi tên thành `frontend/.env`
    - Dán nội dung liên kết Ngrok của bạn vào biến cấu hình chuẩn:
      ```env
      VITE_API_URL=https://XXXX-YYY.ngrok-free.app
@@ -71,3 +74,20 @@ Mục đích là để Vercel trên Internet có thể gọi xuống máy tính 
    npm run dev
    ```
 5. Mở link Localhost hiển thị trên terminal để xem thử (thường là `http://localhost:5173`). Bạn cũng có thể commit và push thay đổi lên Vercel để nhận diện trên thiết bị di động với chuẩn giao diện PWA app.
+
+---
+
+### Triển Khai Bằng Docker (Tuỳ chọn Nâng Cao)
+
+Nếu bạn làm việc trên một máy tính hoàn toàn mới (như VPS của AWS hoặc DigitalOcean) và không muốn cài đặt lỉnh kỉnh các môi trường Python/Node, bạn có thể chạy toàn bộ Backend AI bằng **Docker**.
+
+1. **Yêu cầu**: Cài đặt [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Hoặc Docker Engine trên Linux).
+2. Tải repository (clone code) về máy tính mới.
+3. Đảm bảo bạn đã sao chép file `best.pt` bỏ vào trong thư mục `backend/`.
+4. Mở Terminal và đứng tại thư mục gốc của project (có chứa file `docker-compose.yml`).
+5. Kích hoạt toàn bộ hệ thống bằng câu lệnh:
+   ```bash
+   docker-compose up -d --build
+   ```
+   Lệnh này sẽ tự động tải các hệ điều hành ảo, cài đặt toàn bộ thư viện cần thiết cho AI và khởi chạy ngầm Server.
+6. Khi hoàn tất, Backend AI lập tức sẽ túc trực tại cổng được định nghĩa (mặc định là `http://localhost:8000`). Bạn chỉ việc bật Ngrok như Bước 2 ở trên để đưa cổng này lên mạng là dùng được ngay.

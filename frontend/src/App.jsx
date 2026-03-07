@@ -1,8 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle, ScanLine, X } from 'lucide-react';
 
-
-
 const FishCounterPWA = () => {
     const [image, setImage] = useState(null);
     const [loading, setLoading] = useState(false);
