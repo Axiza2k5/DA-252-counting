@@ -1,221 +1,79 @@
-# Hệ Thống Đếm Giống Cua Bằng Thị Giác Máy Tính (YOLO)
+# Đồ án 252 - Counting
 
-Lộ trình dự án toàn diện để xây dựng hệ thống hỗ trợ AI tự động đếm và phát hiện ấu trùng thủy sinh (cá giống, cá con, tôm con, v.v.) bằng công nghệ phát hiện đối tượng YOLOv11.
+## 1. Tổng quan dự án
 
----
+Dự án này sử dụng mô hình **YOLOv26** để phát hiện và đếm cá từ hình ảnh tĩnh. Mục tiêu cốt lõi của dự án là cung cấp một giải pháp nhanh chóng, tiện lợi và chính xác nhằm giúp người dùng theo dõi số lượng cá trong không gian ao, bể hoặc các môi trường nuôi trồng thủy sản khác.
 
-## Mục Lục
-
-1. [Giai Đoạn 1: Chuẩn Bị Dữ Liệu](#giai-đoạn-1-chuẩn-bị-dữ-liệu)
-2. [Giai Đoạn 2: Huấn Luyện Mô Hình](#giai-đoạn-2-huấn-luyện-mô-hình)
-3. [Giai Đoạn 3: Phát Triển Backend API](#giai-đoạn-3-phát-triển-backend-api)
-4. [Giai Đoạn 4: Giao Diện Web Frontend](#giai-đoạn-4-giao-diện-web-frontend)
-5. [Giai Đoạn 5: Triển Khai Docker](#giai-đoạn-5-triển-khai-docker)
+Dự án được chia thành hai luồng xử lý chính:
+- **Ứng dụng Android:** Tích hợp mô hình nhẹ **YOLOv26m** chạy trực tiếp (local) trên thiết bị.
+- **Backend server:** Vận hành mô hình **YOLOv26l** mạnh hơn, chính xác hơn, có thể được gọi từ ứng dụng khi cần thiết.
 
 ---
 
-## Giai Đoạn 1: Chuẩn Bị Dữ Liệu
+## 2. Các mô hình sử dụng
 
-**Mục Tiêu:** Chuẩn bị một bộ dữ liệu YOLO được định dạng đúng để huấn luyện mô hình AI.
+Hệ thống cung cấp sự linh hoạt bằng cách sử dụng hai biến thể của YOLOv26 để cân bằng giữa tốc độ và độ chính xác:
 
-### Bước 1.1: Thu Thập Hình Ảnh
+### 📱 YOLOv26m (Sử dụng Local)
+- Chạy trực tiếp trên ứng dụng Android.
+- Phù hợp để xử lý nhanh hình ảnh tĩnh ngay trên điện thoại.
+- Cho ra kết quả nhanh chóng, đặc biệt cực kỳ tiện lợi khi thiết bị ở khu vực không có mạng Internet (offline).
 
-- Sử dụng bộ dữ liệu hiện có từ Roboflow hoặc các nguồn công khai.
-- Tải xuống bộ dữ liệu ở định dạng YOLO
-- Tổ chức cấu trúc thư mục: train/val/test với thư mục images và labels tương ứng
-- Đảm bảo file `data.yaml` chứa các đường dẫn và định nghĩa lớp chính xác
-
----
-
-## Giai Đoạn 2: Huấn Luyện Mô Hình
-
-**Mục Tiêu:** Huấn luyện một mô hình YOLO để phát hiện mẫu vật và lưu các trọng số đã huấn luyện dưới dạng `best.pt`.
-
-### Bước 2.1: Thiết Lập Môi Trường
-
-- Cài đặt Python 3.11 trên máy
-- Tạo môi trường ảo Python
-- Cài đặt các thư viện cần thiết: ultralytics, torch, numpy, opencv-python
-
-### Bước 2.2: Cấu Hình Huấn Luyện
-
-- Tạo tập lệnh Python để huấn luyện mô hình YOLO
-- Cấu hình các tham số: số epoch, kích thước batch, kích thước hình ảnh
-- Chọn kích thước mô hình phù hợp (nano, small, medium, large)
-- Sử dụng gia tốc GPU nếu có (mps cho M1/M2 Mac, cuda cho NVIDIA)
-
-### Bước 2.3: Thực Thi Huấn Luyện
-
-- Chạy tập lệnh huấn luyện và giám sát các chỉ số (loss, mAP, precision, recall)
-- Các trọng số mô hình tốt nhất được lưu tự động (best.pt)
-- Xem kết quả huấn luyện thông qua biểu đồ và log
+### ☁️ YOLOv26l (Sử dụng Server)
+- Chạy trên cấu hình của Backend server.
+- Là mô hình có khả năng tính toán mạnh hơn và đem lại độ chính xác cao hơn.
+- Người dùng có thể dễ dàng gửi hình ảnh từ ứng dụng Android lên server thông qua Internet để sử dụng mô hình này.
 
 ---
 
-## Giai Đoạn 3: Phát Triển Backend API
+## 3. Kiến trúc dự án
 
-**Mục Tiêu:** Tạo một máy chủ API (ví dụ: FastAPI) tải mô hình đã huấn luyện và cung cấp các điểm cuối suy luận.
+Dự án hoạt động dựa trên mô hình Client-Server với vai trò rõ ràng cho mỗi bên:
 
-### Bước 3.1: Thiết Lập Khung API
+### ⚙️ Backend Server
+- **Endpoint chính:** `/predict`
+- **Mô tả hoạt động:** Nhận hình ảnh đầu vào từ ứng dụng di động hoặc từ người dùng.
+- **Kết quả trả về:**
+  - Số lượng cá đếm được trong ảnh.
+  - Hình ảnh đã được đánh dấu (bounding boxes) chính xác vị trí của từng con cá.
+- **Quản lý dữ liệu:** Server đảm nhiệm việc lưu lịch sử của tất cả các lần đếm cá vào cơ sở dữ liệu để tiện cho việc tra cứu, trích xuất sau này.
 
-- Chọn khung web/API (FastAPI)
-- Cài đặt các thư viện cần thiết
-- Tạo cấu trúc dự án backend
-
-### Bước 3.2: Tích Hợp Mô Hình
-
-- Tải mô hình YOLO đã huấn luyện (best.pt) vào bộ nhớ
-- Xây dựng logic xử lý suy luận
-- Tạo hàm xử lý hình ảnh đầu vào
-
-### Bước 3.3: Xây Dựng Điểm Cuối API
-
-- Tạo điểm cuối `/predict` để nhận hình ảnh và trả về kết quả phát hiện
-- Xử lý upload tệp và xử lý lỗi
-- Trả về dữ liệu JSON chứa: số lượng phát hiện, hình ảnh kết quả, điểm tin cậy
-
-### Bước 3.4: Triển Khai Backend
-
-- Chạy server API trên cổng cụ thể (ví dụ: 8000)
-- Kiểm tra các điểm cuối API thông qua công cụ (Postman, curl, v.v.)
-- Xem tài liệu API tự động (nếu khung hỗ trợ)
-
+### 📱 Ứng dụng Android (Client)
+- Tích hợp và chạy YOLOv26m ở chế độ local giúp phát hiện và đếm cá ngay lập tức từ hình ảnh.
+- Cung cấp tính năng gửi hình ảnh trực tiếp đến Backend server để gọi YOLOv26l, mang lại kết quả chuẩn xác hơn khi cần.
+- Cập nhật, đồng bộ và hiển thị lịch sử các lần đếm cá trước đó. Từ đó, hỗ trợ người dùng theo dõi xu hướng số lượng cá theo thời gian thực tế.
 
 ---
 
-## Giai Đoạn 4: Giao Diện Web Frontend
+## 4. Tính năng chính
 
-**Mục Tiêu:** Xây dựng một ứng dụng web thân thiện với người dùng để tải lên hình ảnh và hiển thị kết quả.
-
-### Bước 4.1: Khởi Tạo Dự Án
-
-- Chọn khung frontend (React)
-- Cài đặt các phụ thuộc cần thiết
-- Cấu hình công cụ xây dựng (Vite)
-
-### Bước 4.2: Trang Tải Lên Hình Ảnh
-
-- Tạo component cho phép người dùng chọn hình ảnh từ máy cục bộ
-- Hiển thị xem trước hình ảnh được chọn
-- Thêm nút gửi để upload tệp đến backend
-
-### Bước 4.3: Hiển Thị Kết Quả
-
-- Tạo component hiển thị số lượng phát hiện
-- Hiển thị hình ảnh kết quả với các hộp giới hạn
-- Hiển thị điểm tin cậy cho mỗi phát hiện
-- Thêm nút để quay lại và tải lên hình ảnh mới
-
-### Bước 4.4: Triển Khai Frontend
-
-- Chạy máy chủ phát triển frontend
-- Kiểm tra kết nối giữa frontend và backend API
-- Xây dựng cho production (build output)
-
+- 🐟 **Phát hiện và đếm cá nhanh chóng:** Xử lý trực tiếp từ các hình ảnh tĩnh.
+- ⚖️ **Lựa chọn mô hình linh hoạt:** Tùy chọn xử lý **local (YOLOv26m)** hoặc **backend (YOLOv26l)** để cân bằng phù hợp giữa tốc độ xử lý nhanh và độ chính xác cao.
+- 📊 **Quản lý Lịch sử các lần đếm cá:**
+  - Hiển thị đầy đủ thông tin về số lượng cá của từng lần đo.
+  - Tự động lưu trữ thời gian và kết quả đếm của mỗi phiên.
+  - Giao diện thân thiện giúp người nuôi trồng, quản lý dễ dàng kiểm tra và theo dõi xu hướng phát sinh số lượng cá theo từng ngày, từng tháng.
 
 ---
 
-## Giai Đoạn 5: Triển Khai Docker
+## 5. Thiết kế UX/UI
+[Link Figma](https://www.figma.com/design/0VbTPxti4KP8T89Le7De29/Fish-counting?node-id=7-78&t=ayIkvKDVc4NahTl9-1)
 
-**Mục Tiêu:** Đóng gói toàn bộ ứng dụng (Frontend & Backend) để triển khai nhất quán trên các môi trường khác nhau.
+Ứng dụng được thiết kế tối giản, tập trung vào trải nghiệm cốt lõi với 3 trang chính:
 
-### Bước 5.1: Cấu Hình Backend Docker
+### 🏠 1. Trang Tương Tác (Chụp Ảnh & Đếm)
+Đây là màn hình hoạt động chính để đưa hình ảnh vào hệ thống và bắt đầu đếm:
+- **Nguồn ảnh linh hoạt:** Người dùng có thể chọn **Chụp ảnh trực tiếp** từ camera hoặc **Tải lên ảnh** từ thư viện của thiết bị.
+- **Xem trước ảnh (Preview):** Hiển thị rõ ràng hình ảnh đã chọn hoặc vừa chụp ở khung trung tâm trước khi xử lý.
+- **Lựa chọn mô hình:** Công tắc tùy chọn xử lý bằng **Local Model** (nhanh, không cần mạng) hoặc **Online Model** (gửi qua server để đếm chính xác hơn).
+- **Bắt đầu (Start):** Nút hành động nổi bật nhất để hệ thống bắt đầu quá trình đếm cá.
 
-- Tạo `Dockerfile` cho backend với Python base image
-- Sao chép requirements và cài đặt các thư viện Python
-- Sao chép mã ứng dụng và mô hình đã huấn luyện
-- Expose cổng API (ví dụ: 8000)
-- Đặt lệnh khởi động cho server
+### 🎯 2. Trang Kết Quả
+Trang báo cáo thống kê hiển thị ngay sau khi hệ thống xử lý đếm xong:
+- Nổi bật con số hiển thị **Tổng số lượng cá** đếm được.
+- Cung cấp hình ảnh kết quả đã được vẽ trực quan các ô khoanh vùng (bounding box) quanh mỗi con cá để người dùng dễ dàng kiểm chứng.
 
-### Bước 5.2: Cấu Hình Frontend Docker
-
-- Tạo `Dockerfile` cho frontend với Node.js base image
-- Xây dựng ứng dụng React thành các tệp tĩnh
-- Sử dụng Nginx để phục vụ tệp tĩnh
-- Proxy các yêu cầu API đến backend
-- Expose cổng web (ví dụ: 80)
-
-### Bước 5.3: Cấu Hình Docker Compose
-
-- Tạo `docker-compose.yml` để định nghĩa các dịch vụ
-- Cấu hình networking giữa backend và frontend
-- Đặt các biến môi trường cần thiết
-- Cấu hình volumes cho phát triển
-
-### Bước 5.4: Triển Khai Hoàn Chỉnh
-
-- Xây dựng và khởi động tất cả các dịch vụ bằng docker-compose
-- Truy cập ứng dụng tại địa chỉ web
-- Kiểm tra API tại tài liệu tự động (nếu có)
-- Xem logs từ các container
-- Dừng các dịch vụ khi cần
-
----
-
-## Tham Chiếu Nhanh
-
-### Cấu Trúc Dự Án Chính
-
-```
-project/
-├── backend/              # Ứng dụng FastAPI
-│   ├── main.py
-│   ├── requirements.txt
-│   └── best.pt
-├── frontend/             # Ứng dụng React
-│   ├── src/
-│   ├── package.json
-│   └── Dockerfile
-├── Fish-Fry-1/          # Bộ dữ liệu
-│   ├── data.yaml
-│   ├── train/
-│   ├── val/
-│   └── test/
-└── docker-compose.yml   # Cấu hình Docker
-```
-
-### Các Công Việc Chính
-
-- **Huấn luyện:** Chạy tập lệnh huấn luyện YOLO với bộ dữ liệu đã chuẩn bị
-- **Backend:** Khởi động API server sau khi có mô hình đã huấn luyện
-- **Frontend:** Phát triển giao diện web kết nối với API
-- **Docker:** Đóng gói toàn bộ ứng dụng để triển khai
-
----
-
-## Performance Metrics
-
-- **Model size:** YOLOv11s (small) - ~10MB
-- **Inference speed:** ~50-100ms per image (GPU accelerated)
-- **Accuracy:** mAP≥0.90 (target)
-- **Supported image formats:** JPG, PNG, WEBP
-
----
-
-## Ghi Chú & Các Thực Hành Tốt Nhất
-
-1. **Tối Ưu Hóa Apple Silicon:** Sử dụng gia tốc `mps` trong huấn luyện cho M1/M2 Mac
-2. **Tăng Cường Dữ Liệu:** Bật augmentation trong quá trình huấn luyện để cải thiện khả năng tổng quát hóa
-3. **Lựa Chọn Mô Hình:** Bắt đầu với YOLOv11s, mở rộng lên YOLOv11m/l nếu cần cải thiện độ chính xác
-4. **Kích Thước Batch:** Điều chỉnh dựa trên VRAM có sẵn (16-32 điển hình)
-5. **Giám Sát:** Sử dụng Weights & Biases hoặc TensorBoard để theo dõi quá trình huấn luyện
-
----
-
-## Future Enhancements
-
-- [ ] Real-time video stream processing
-- [ ] Batch image processing
-- [ ] Custom model fine-tuning UI
-- [ ] Statistical analysis dashboard
-- [ ] Mobile app (React Native)
-- [ ] Database storage of results
-- [ ] User authentication system
-
----
-
-## License
-
-This project is designed for educational and research purposes.
-
-
+### 🕒 3. Trang Lịch Sử
+Trang giúp người dùng quản lý và theo dõi quá trình biến đổi số lượng cá theo thời gian:
+- Giao diện hiển thị dưới dạng danh sách (List view) các lần đếm trước đó.
+- Mỗi mục trong danh sách báo cáo tóm tắt các thông tin quan trọng: Hình ảnh nhỏ, Thời điểm đo (ngày/giờ cụ thể) và Kết quả số lượng con cá.
