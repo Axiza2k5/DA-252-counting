@@ -12,8 +12,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     # Check file type
