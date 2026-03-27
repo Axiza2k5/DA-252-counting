@@ -1,93 +1,64 @@
-# Hướng Dẫn Cài Đặt (Developer Setup Guide)
+# 🏗 Cấu Trúc Dự Án & Giải Thích Module (AquaVision)
 
-Dành cho các nhà phát triển muốn clone repository này và chạy thử ứng dụng AquaVision trên máy cá nhân một cách nhanh chóng kết hợp đường hầm Ngrok.
-
-### Yêu Cầu Hệ Thống
-- Đã cài đặt [Python 3.10+](https://www.python.org/)
-- Đã cài đặt [Node.js 18+](https://nodejs.org/)
-- Đã cài đặt [Ngrok](https://ngrok.com/download)
-- Một file trọng số mô hình YOLO đã huấn luyện (`best.pt`)
+Tài liệu này giải thích chi tiết cách hệ thống hoạt động bên dưới, các module cấu thành và các kiến thức nền tảng cần thiết nếu bạn muốn chỉnh sửa hay nâng cấp mã nguồn.
 
 ---
 
-### Các Bước Triển Khai
+## 1. Kiến Trúc Tổng Thể (Architecture Overview)
 
-**Bước 1: Khởi động Backend AI (FastAPI)**
-1. Mở Terminal và truy cập vào thư mục `backend`:
-   ```bash
-   cd backend
-   ```
-2. Tạo Virtual Environment và kích hoạt:
-   ```bash
-   python -m venv venv
-   
-   # Mới Windows (Command Prompt / PowerShell):
-   venv\Scripts\activate
-   
-   # Với Mac/Linux:
-   source venv/bin/activate
-   ```
-3. Cài đặt các thư viện Python chuyên sâu (AI/Computer Vision) cần thiết:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. (Tuỳ chọn) Cấu hình biến môi trường:
-   - Dễ dàng thay đổi cấu hình bằng cách copy file `backend/.env.example` thành `backend/.env`
-   - Chỉnh sửa file `.env` (Ví dụ đổi PORT sang số khác nếu port 8000 bị trùng).
-5. Copy file mạng Neural YOLO (`best.pt`) của bạn thả trực tiếp vào thư mục `backend/`.
-6. Khởi động server suy luận FastAPI:
-   ```bash
-   uvicorn main:app --reload
-   ```
-   *Terminal chớp nháy và API giờ sẽ tự động được gán vào `PORT` đã thiết lập (mặc định là `http://127.0.0.1:8000`)*
+AquaVision là một hệ thống lai (Hybrid AI Application), cung cấp 2 chế độ Suy Luận (Inference):
+- **Chế độ ONLINE:** Gửi ảnh lên Backend (máy chủ) để phân tích bằng GPU/CPU mạnh hơn.
+- **Chế độ LOCAL:** Chạy trực tiếp mô hình AI trên thiết bị di động hoàn toàn không cần Internet.
 
----
+Hệ thống được chia làm 3 phân hệ (module) chính:
 
-**Bước 2: Tạo Đường Hầm API bằng Ngrok**
-Mục đích là để Vercel trên Internet có thể gọi xuống máy tính nội bộ của bạn.
-1. Mở một cửa sổ Terminal thứ 2 (Để nguyên cửa sổ FastAPI chạy ẩn định).
-2. Mở cổng 8000 theo dạng giao thức HTTP:
-   ```bash
-   ngrok http 8000
-   ```
-3. Đợi vài giây, Copy chính xác đường link Ngrok sinh ra có dạng `https://XXXX-YYY.ngrok-free.app` (Không lấy link localhost).
+### A. Backend AI Server (Thư mục `backend`)
+Đóng vai trò là máy chủ xử lý dữ liệu nặng trong chế độ Online.
+- **Công nghệ:** Python, FastAPI, Ultralytics.
+- **Luồng hoạt động:** Nhận file ảnh qua API `POST /predict` -> Gọi YOLOv8 phân tích ảnh -> Vẽ Bounding Box trực tiếp lên ảnh -> Encode ảnh kết quả ra chuẩn Base64 -> Trả về JSON cho Mobile.
+- **Kiến thức cần có:**
+  - `FastAPI`: Cách tạo RESTful API nhanh, xử lý Multipart Form Data (Upload file).
+  - `Ultralytics`: Cách load file trọng số `.pt`, bóc tách tọa độ Bounding Box, Confidence Score.
+  - Xử lý ảnh (Pillow, IO Buffer) và chuyển đổi mã hóa `Base64`.
 
----
+### B. Mobile App UI & Logic (Thư mục `mobile-app`)
+Giao diện người dùng trên điện thoại.
+- **Công nghệ:** React Native, Expo, NativeWind (TailwindCSS).
+- **Luồng hoạt động:** Xin quyền Camera/Gallery sớm nhất có thể -> Khi chụp ảnh, bỏ qua bước lấy dữ liệu base64 trực tiếp từ Camera (để giảm độ trễ) -> Chuyển thành URI -> Đọc nội dung ảnh dưới dạng Base64 bằng I/O nền (`FileSystem`). Sau đó phân nhánh gửi ảnh cho Backend hoặc WebView tùy vào Mode.
+- **Kiến thức cần có:**
+  - `React Native Hooks` (useState, useEffect, useRef).
+  - `Expo Camera & ImagePicker`: Quản lý quyền hệ thống (Permissions) trên Cấp độ Native.
+  - `React Native Animated`: Sử dụng `Animated.timing`, `Animated.spring`, `interpolate` để tạo hiệu ứng mượt mà (chuyển đổi nút, trượt panel). Cần nắm khái niệm `useNativeDriver: true` để animation không bị giật bởi Main Thread.
 
-**Bước 3: Cấu hình và Khởi động Frontend (React Vite PWA)**
-1. Mở một cửa sổ Terminal thứ 3 và di chuyển đến thư mục Frontend:
-   ```bash
-   cd frontend
-   ```
-2. Tái tạo lại thư mục `node_modules` (Tải lại toàn bộ Framework UI):
-   ```bash
-   npm install
-   ```
-3. Tạo file biến môi trường trung gian hệ thống:
-   - Copy file `frontend/.env.example` đổi tên thành `frontend/.env`
-   - Dán nội dung liên kết Ngrok của bạn vào biến cấu hình chuẩn:
-     ```env
-     VITE_API_URL=https://XXXX-YYY.ngrok-free.app
-     ```
-4. Khởi chạy máy chủ giao diện máy cục bộ:
-   ```bash
-   npm run dev
-   ```
-5. Mở link Localhost hiển thị trên terminal để xem thử (thường là `http://localhost:5173`). Bạn cũng có thể commit và push thay đổi lên Vercel để nhận diện trên thiết bị di động với chuẩn giao diện PWA app.
+### C. Local Edge AI (Module WebView ONNX)
+Trái tim của tính năng OFFLINE. Model YOLO khổng lồ được nén và chạy ngay trên chip của điện thoại.
+- **Công nghệ:** WebAssembly (WASM), ONNX Runtime Web, React Native WebView.
+- **Luồng hoạt động:**
+  1. Trọng số `.pt` được chuyển đổi sang `.onnx` và ép kiểu thành chuỗi siêu dài (`modelBase64.json`).
+  2. Mobile App nhúng một UI ẩn HTML (`<WebView>`). HTML này tải bộ thư viện ONNX Web và dịch file Base64 ngược ra mảng byte Float32.
+  3. Khi cần xử lý ảnh, App bắn ảnh gốc vào WebView. JS nội bộ sẽ tự động resize ảnh về `640x640`, chia chuẩn màu `/255.0` (Tiền xử lý).
+  4. Đẩy ma trận Float32Array cho ONNX WASM tiến hành tính toán.
+  5. JS áp dụng thuật toán **NMS** (Non-Maximum Suppression) tự code để thu gọn các hình nón trùng lặp, sau đó vẽ Canvas và trả ảnh lại cho thẻ App.
+- **Kiến thức cần có:**
+  - Tính toán ma trận Tensor.
+  - `WebAssembly`: Giúp chạy thuật toán C++ ngay trong trình duyệt của điện thoại.
+  - Thuật toán `IoU` (Intersection over Union) và `NMS` để gộp các Bounding Box chồng mép lên nhau.
+  - Giao tiếp bất đồng bộ (PostMessage) giữa React Native Context và WebView Window.
 
 ---
 
-### Triển Khai Bằng Docker (Tuỳ chọn Nâng Cao)
+## 2. Logic Tối Ưu Nổi Bật (Optimization Highlights)
 
-Nếu bạn làm việc trên một máy tính hoàn toàn mới (như VPS của AWS hoặc DigitalOcean) và không muốn cài đặt lỉnh kỉnh các môi trường Python/Node, bạn có thể chạy toàn bộ Backend AI bằng **Docker**.
+Trong dự án này, có nhiều "thủ thuật" đã được áp dụng để mang lại trải nghiệm cấp số nhân:
 
-1. **Yêu cầu**: Cài đặt [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Hoặc Docker Engine trên Linux).
-2. Tải repository (clone code) về máy tính mới.
-3. Đảm bảo bạn đã sao chép file `best.pt` bỏ vào trong thư mục `backend/`.
-4. Mở Terminal và đứng tại thư mục gốc của project (có chứa file `docker-compose.yml`).
-5. Kích hoạt toàn bộ hệ thống bằng câu lệnh:
-   ```bash
-   docker-compose up -d --build
-   ```
-   Lệnh này sẽ tự động tải các hệ điều hành ảo, cài đặt toàn bộ thư viện cần thiết cho AI và khởi chạy ngầm Server.
-6. Khi hoàn tất, Backend AI lập tức sẽ túc trực tại cổng được định nghĩa (mặc định là `http://localhost:8000`). Bạn chỉ việc bật Ngrok như Bước 2 ở trên để đưa cổng này lên mạng là dùng được ngay.
+1. **Animation Overlay Rendering:**
+   - Thay vì dùng thuật toán `if (show) return <Component />` khiến React phải unmount/remount gây giật lag đồ họa.
+   - Ứng dụng dùng `View` luôn hiển thị trên DOM nhưng bọc trong `pointerEvents="none"` kết hợp Opacity bằng `Animated`. Điều này giữ cho 60 FPS luôn đều đặn.
+
+2. **Khử Độ Trễ Nút Chụp Ảnh (Camera Shutter Latency):**
+   - Rất nhiều app Expo bị kẹt 2-3 giây ở dòng code khởi động Camera do thuộc tính `base64: true`.
+   - Giải pháp: Camera chỉ trả về đường dẫn `URI` (tốn 0.1 giây) -> Ảnh ảo lập tức lên màn hình cho User xem -> Thuật toán tĩnh `FileSystem` sẽ đọc ngầm ảnh này thành chuỗi Base64 trả cho AI -> UX tối đa!
+
+3. **Cơ chế Load Model 1 Lần (Initialization State):**
+   - WebAssembly Model rất nặng, tốn tài nguyên. Do đó App không ép thư viện ONNX chạy trực tiếp.
+   - Thẻ Webview sẽ load DOM -> gửi tín hiệu `dom_ready` lên App -> App gửi lệnh `INIT` -> ONNX tạo `InferenceSession` lưu lên RAM -> Thẻ Webview gửi trả `ready`. Chỉ khi quy trình này xong, nút Local mới hoạt động.
