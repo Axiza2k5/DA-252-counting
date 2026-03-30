@@ -87,13 +87,6 @@ export default function App() {
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     const data = JSON.parse(event.nativeEvent.data);
     if (data.type === 'SYS' && data.status === 'dom_ready') {
-      // WebView DOM loaded, now trigger ONNX model initialization
-      webviewRef.current?.injectJavaScript(`
-        document.dispatchEvent(new MessageEvent('message', {
-          data: JSON.stringify({ type: 'INIT' })
-        }));
-        true;
-      `);
     } else if (data.type === 'SYS' && data.status === 'ready') {
       console.log('WebView ONNX model is ready');
       setCpuReady(true);
@@ -109,7 +102,8 @@ export default function App() {
       setLoading(false);
     } else if (data.type === 'ERROR') {
       console.error('WebView Error:', data.message);
-      setResult({ total: "ERR", message: "WebAssembly lỗi" });
+      Alert.alert("Lỗi WebView Chi Tiết", data.message);
+      setResult({ total: "ERR", message: String(data.message).substring(0, 40) });
       setLoading(false);
     }
   };

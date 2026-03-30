@@ -16,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1a2744",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -31,6 +31,9 @@
       "eas": {
         "projectId": "86d0f947-2ab1-4d24-aa05-770e16086439"
       }
-    }
+    },
+    "plugins": [
+      ["expo-asset", { "assets": ["./assets/best.onnx"] }]
+    ]
   }
 }
