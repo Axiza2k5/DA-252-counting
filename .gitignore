@@ -38,6 +38,3 @@ env/
 runs/
 datasets/
 dataset/
-
-# Root scripts
-train_models.py
