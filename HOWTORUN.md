@@ -1,51 +1,84 @@
-# 🚀 Hướng Dẫn Kéo & Chạy Toàn Bộ Dự Án (HOW TO RUN)
+# Hướng Dẫn Kéo & Chạy Toàn Bộ Dự Án (HOW TO RUN)
 
 Tài liệu này hướng dẫn cách chạy toàn bộ dự án AquaVision từ A-Z một cách dễ dàng và nhanh chóng nhất.
 
 ---
 
-## 🛑 YÊU CẦU HỆ THỐNG
+## YÊU CẦU HỆ THỐNG
 Trước khi bắt đầu, hãy đảm bảo hệ thống bạn đã được cài đặt các phần mềm sau:
-1. **Python 3.10+** (Cho Backend)
-2. **Node.js 18+** (Cho Frontend & Mobile)
+1. **Python 3.10+** (Cho Backend & Training)
+2. **Node.js 18+** (Cho Mobile App)
 3. **Ngrok CLI** (`npm install -g ngrok` hoặc cài từ web ngrok) (Để đưa Local host lên mây)
 4. **Java 17 (JDK)** và **Android Studio / Android SDK** (Để build file APK)
-5. Điện thoại Android (Cắm cáp USB kết nối nội bộ hoặc chế độ Developer)
+5. Điện thoại Android (Cắm cáp USB, bật chế độ Developer & USB Debugging)
 
-**📌 Yêu cầu về File Trọng Số (AI Weight):**
-Bạn cần phải tự chuẩn bị 2 định dạng file cho YOLO (Sau khi đã Train AI xong):
-- Bỏ file `best.pt` vào thư mục: `c:\counting\backend\models\best.pt`
-- Bỏ file model base64 `modelBase64.json` vào thư mục: `c:\counting\mobile-app\modelBase64.json`
+** Yêu cầu về File Trọng Số (AI Weight):**
+Bạn cần phải tự chuẩn bị 2 file sau khi đã Train AI xong:
+- Bỏ file `best.pt` vào thư mục: `backend/models/best.pt` (Model YOLO26 Large cho Backend)
+- Bỏ file `best.onnx` vào thư mục: `mobile-app/assets/best.onnx` (Model YOLO26 Medium cho Local)
+
+> **LƯU Ý QUAN TRỌNG:** File `modelBase64.json` không còn được sử dụng nữa. Model local giờ sử dụng file `.onnx` nguyên bản được đặt trực tiếp vào `mobile-app/assets/`. Trong quá trình build, file ONNX sẽ được copy vào `android/app/src/main/assets/` để WebView truy cập trực tiếp mà không cần chuyển đổi Base64.
 
 ---
 
-## 🔥 PHƯƠNG PHÁP 1: CHẠY TỰ ĐỘNG (KHUYÊN DÙNG)
-Dự án được trang bị sẵn 3 Scripts cực kì mạnh mẽ cho hệ điều hành Windows để đảm nhiệm hầu hết các tác vụ nhàm chán.
+## 🔧 HUẤN LUYỆN MODEL (TRAINING)
 
-### Bước 1: Khởi động mọi thứ cực nhanh (Vỏn vẹn 1 Click)
-Mở cửa sổ Terminal/Command Prompt trong thư mục `mobile-app` và gõ:
+### Bước 0: Chuẩn bị Dataset
+Đặt dữ liệu huấn luyện vào thư mục `dataset/` với file config `dataset/data.yaml`.
+
+### Bước 1: Cài đặt môi trường Training
+```bash
+pip install ultralytics torch torchvision --index-url https://download.pytorch.org/whl/cu124
+```
+> 💡 Sử dụng phiên bản CUDA phù hợp với GPU của bạn. Lệnh trên dành cho CUDA 12.4.
+
+### Bước 2: Chạy Training
+```bash
+python train_models.py
+```
+Script sẽ tự động:
+- Train **YOLO26 Large** (cho Backend) — 100 epochs trên GPU
+- Train **YOLO26 Medium** (cho Local App) — 100 epochs trên GPU + Export ONNX
+
+### Bước 3: Triển khai Model vào App
+```bash
+python deploy_models.py
+```
+Script sẽ tự động:
+- Copy `best.pt` từ `runs/detect/backend_yolo26l*/` → `backend/models/best.pt`
+- Copy `best.onnx` từ `runs/detect/local_yolo26m*/` → `mobile-app/assets/best.onnx`
+
+---
+
+## PHƯƠNG PHÁP 1: CHẠY TỰ ĐỘNG (KHUYÊN DÙNG)
+Dự án được trang bị sẵn Scripts cho hệ điều hành Windows.
+
+### Bước 1: Khởi động Backend + Ngrok (1 Click)
+Mở cửa sổ Terminal trong thư mục `mobile-app` và gõ:
 ```bash
 .\start-all.bat
 ```
-👉 **Điều gì sẽ xảy ra?**
+**Điều gì sẽ xảy ra?**
 - Hệ thống sẽ chạy chìm (ẩn) Backend Python.
 - Hệ thống sẽ chạy chìm Ngrok.
-- Script sẽ tự "câu" lấy đường link Public xịn của Ngrok và Update nó vào trực tiếp `mobile-app/.env` và `frontend/.env`. Bạn không cần phải copy dán mệt mỏi!
+- Script sẽ tự lấy URL public của Ngrok và cập nhật vào `mobile-app/.env`.
 
-### Bước 2: Biên dịch file cài APK (Android Package)
+### Bước 2: Biên dịch file APK
 Vẫn ở tại thư mục `mobile-app`, chạy lệnh:
 ```bash
 .\build-release.bat
 ```
-👉 **Điều gì sẽ xảy ra?**
-- Nó sẽ xóa cache cũ của Expo (`npx expo prebuild --clean`).
-- Tự động thay đổi Java Environment File ở trong folder cài đặt Android bằng JDK 17 cho chuẩn.
-- Bắt đầu biên dịch ứng dụng với Gradle ra thẳng dạng Release siêu nhẹ.
-- File APK sẽ nằm trong thư mục: `mobile-app\android\app\build\outputs\apk\release\app-release.apk`
-- Điện thoại của bạn (nếu đã cắm cáp) sẽ được tự động cài App này luôn!
+**Điều gì sẽ xảy ra?** (7 bước tự động)
+1. Xóa cache cũ của Expo (`npx expo prebuild --clean`)
+2. Tự động thiết lập Android SDK path (`local.properties`)
+3. Patch Gradle: nâng JVM heap lên 6GB, cấu hình JDK 17, giới hạn kiến trúc ARM
+4. **Copy `best.onnx` và `webview.html` vào `android/app/src/main/assets/`** (quan trọng!)
+5. Dừng các Gradle daemon cũ
+6. Build APK release
+- File APK: `mobile-app/android/app/build/outputs/apk/release/app-release.apk`
+- Tự động cài APK lên điện thoại (nếu đã cắm cáp)
 
-### Bước 3: Tắt máy về ngủ
-Khác với ứng dụng bình thường, bạn nhớ rằng ở Bước 1 Ngrok và Backend đang CHẠY NGẦM. Nó sẽ không tự tắt kể cả khi bạn đóng máy. Để tắt chúng triệt để khỏi tốn RAM:
+### Bước 3: Tắt tất cả
 ```bash
 .\stop-all.bat
 ```
@@ -77,11 +110,23 @@ Mở file `mobile-app/.env` và chỉnh sửa:
 EXPO_PUBLIC_API_URL=https://<NGROK_URL_VỪA_COPY_VÀO_ĐÂY>
 ```
 
-**4️⃣ Chạy và Build Mobile App (Mở Terminal Mới)**
+**4️⃣ Build Mobile App (Mở Terminal Mới)**
 ```bash
 cd mobile-app
 npm install
 npx expo prebuild --clean --platform android
+```
+
+**5️⃣ Copy file ONNX vào Android assets (BẮT BUỘC)**
+```bash
+mkdir -p android/app/src/main/assets
+cp assets/best.onnx android/app/src/main/assets/best.onnx
+cp assets/webview.html android/app/src/main/assets/webview.html
+```
+> **Bước này KHÔNG ĐƯỢC BỎ QUA.** Nếu thiếu, chế độ Local sẽ không hoạt động.
+
+**6️⃣ Build APK**
+```bash
 npx expo run:android --variant release
 ```
 -> File cài đặt nằm ở: `mobile-app/android/app/build/outputs/apk/release/app-release.apk`.
