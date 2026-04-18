@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fish & Shrimp Counter</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+
+    /* Snap button*/
+    #captureBtn {
+      width: 100%;
+      padding: 16px;
+      background: #0ea5e9;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+    
+    #captureBtn:hover  { background: #0284c7; }
+    #captureBtn:active { transform: scale(0.98); }
+    #captureBtn:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    /* Status */
+    #status {
+      text-align: center;
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: #94a3b8;
+      min-height: 20px;
+    }
+
+    /* Result area */
+    #resultCard { display: none; }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-box .label {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+
+    .stat-box .value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+
+    .stat-box .value.fish   { color: #34d399; }
+    .stat-box .value.shrimp { color: #fb923c; }
+    .stat-box .value.time   { font-size: 1.5rem; color: #a78bfa; }
+
+    /* Result image */
+    #resultImg {
+      width: 100%;
+      border-radius: 12px;
+      border: 2px solid #334155;
+      display: block;
+    }
+    
+    .img-label {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid #334155;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h1> Fish & Shrimp Counter</h1>
+  <p class="subtitle">Powered by YOLO26 - Raspberry Pi 4</p>
+
+  <!-- Snap button -->
+  <div class="card">
+    <button id="captureBtn" onclick="captureAndCount()">
+      Chup anh va dem
+    </button>
+    <div id="status"></div>
+  </div>
+
+  <!-- Result-->
+  <div class="card" id="resultCard">
+    <div class="result-grid">
+      <div class="stat-box">
+        <div class="label">Tong so</div>
+        <div class="value" id="totalCount">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Thoi gian</div>
+        <div class="value time" id="inferTime">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Ca</div>
+        <div class="value fish" id="fishCount">-</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Tom</div>
+        <div class="value shrimp" id="shrimpCount">-</div>
+      </div>
+    </div>
+
+    <p class="img-label">Anh ket qua (bounding box)</p>
+    <img id="resultImg" src="" alt="Result">
+  </div>
+
+  <script>
+    async function captureAndCount() {
+      const btn    = document.getElementById("captureBtn");
+      const status = document.getElementById("status");
+
+      // Disable nut, show loading
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Dang chup & inference...';
+      status.textContent = "";
+
+      try {
+        const res  = await fetch("/capture_and_count", { method: "POST" });
+        const data = await res.json();
+
+        if (data.status !== "ok") {
+          status.textContent = "Error: " + data.message;
+          return;
+        }
+
+        // Hien ket qua
+        document.getElementById("resultCard").style.display = "block";
+        document.getElementById("totalCount").textContent =
+          data.count;
+        document.getElementById("inferTime").textContent =
+          data.time + "s";
+        document.getElementById("fishCount").textContent =
+          data.class_counts["fish"] ?? 0;
+        document.getElementById("shrimpCount").textContent =
+          data.class_counts["shrimp"] ?? 0;
+
+        // Load anh ket qua (cache bust = timestamp)
+        document.getElementById("resultImg").src = data.image_url;
+
+        status.textContent = "Hoan tat!";
+
+      } catch (err) {
+        status.textContent = "Khong ket noi duoc server";
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = "Chup anh va dem";
+      }
+    }
+  </script>
+
+</body>
+</html>
