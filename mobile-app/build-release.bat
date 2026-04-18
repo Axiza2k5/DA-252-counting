@@ -16,7 +16,7 @@ echo [2/7] Restoring local.properties (Android SDK)...
 echo.
 echo [3/7] Patching gradle.properties (JDK 17 + ARM only)...
 powershell -Command "(Get-Content android\gradle.properties) -replace '^org\.gradle\.jvmargs=.*','org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=1024m' | Set-Content android\gradle.properties"
-powershell -Command "$f='android\gradle.properties'; $c=Get-Content $f; $out=@(); foreach($line in $c){ $out+=$line; if($line -match '^org\.gradle\.jvmargs='){ $out+='org.gradle.java.home=C:/Program Files/Android/Android Studio/jbr' }}; $out | Set-Content $f"
+powershell -Command "$f='android\gradle.properties'; $c=Get-Content $f; $out=@(); foreach($line in $c){ $out+=$line; if($line -match '^org\.gradle\.jvmargs='){ $out+='org.gradle.java.home=C:/Program Files/Microsoft/jdk-17.0.18.8-hotspot' }}; $out | Set-Content $f"
 powershell -Command "(Get-Content android\gradle.properties) -replace 'reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64','reactNativeArchitectures=armeabi-v7a,arm64-v8a' | Set-Content android\gradle.properties"
 
 echo.

@@ -45,7 +45,7 @@ export default function App() {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const res = await fetch(`${CONFIG.API_URL}/health`, { signal: controller.signal });
+        const res = await fetch(`${CONFIG.API_URL}/`, { signal: controller.signal });
         clearTimeout(timeoutId);
         setServerOnline(res.ok);
       } catch {

@@ -21,35 +21,6 @@ Bạn cần phải tự chuẩn bị 2 file sau khi đã Train AI xong:
 
 ---
 
-## 🔧 HUẤN LUYỆN MODEL (TRAINING)
-
-### Bước 0: Chuẩn bị Dataset
-Đặt dữ liệu huấn luyện vào thư mục `dataset/` với file config `dataset/data.yaml`.
-
-### Bước 1: Cài đặt môi trường Training
-```bash
-pip install ultralytics torch torchvision --index-url https://download.pytorch.org/whl/cu124
-```
-> 💡 Sử dụng phiên bản CUDA phù hợp với GPU của bạn. Lệnh trên dành cho CUDA 12.4.
-
-### Bước 2: Chạy Training
-```bash
-python train_models.py
-```
-Script sẽ tự động:
-- Train **YOLO26 Large** (cho Backend) — 100 epochs trên GPU
-- Train **YOLO26 Medium** (cho Local App) — 100 epochs trên GPU + Export ONNX
-
-### Bước 3: Triển khai Model vào App
-```bash
-python deploy_models.py
-```
-Script sẽ tự động:
-- Copy `best.pt` từ `runs/detect/backend_yolo26l*/` → `backend/models/best.pt`
-- Copy `best.onnx` từ `runs/detect/local_yolo26m*/` → `mobile-app/assets/best.onnx`
-
----
-
 ## PHƯƠNG PHÁP 1: CHẠY TỰ ĐỘNG (KHUYÊN DÙNG)
 Dự án được trang bị sẵn Scripts cho hệ điều hành Windows.
 
@@ -85,7 +56,7 @@ Vẫn ở tại thư mục `mobile-app`, chạy lệnh:
 
 ---
 
-## 🐢 PHƯƠNG PHÁP 2: CHẠY THỦ CÔNG (MANUAL)
+## PHƯƠNG PHÁP 2: CHẠY THỦ CÔNG (MANUAL)
 Dành cho ai dùng Mac/Linux hoặc không muốn dùng cơ chế Auto-Scripts.
 
 **1️⃣ Cài đặt Backend Server**

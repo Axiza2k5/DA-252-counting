@@ -12,7 +12,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.get("/health")
+@app.get("/")
 def health():
     return {"status": "ok"}
 @app.post("/predict")
@@ -34,5 +34,8 @@ async def predict(file: UploadFile = File(...)):
 if __name__ == "__main__":
     import os
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    port = int(os.environ["PORT"])
     uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
