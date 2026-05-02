@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+    .bg-ocean-pattern {
+        background: linear-gradient(135deg, #001a3d 0%, #002f6c 50%, #0056b3 100%);
+        background-size: 200% 200%;
+        animation: oceanFlow 15s ease infinite;
+    }
+
+    .glass-panel {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .text-glow {
+        text-shadow: 0 0 20px rgba(0, 163, 255, 0.5);
+    }
+}
+
+@keyframes oceanFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+@keyframes scan {
+    0% {
+        top: -10%;
+        opacity: 0;
+    }
+
+    10% {
+        opacity: 1;
+        text-shadow: 0 0 10px #00a3ff;
+    }
+
+    90% {
+        opacity: 1;
+        text-shadow: 0 0 10px #00a3ff;
+    }
+
+    100% {
+        top: 110%;
+        opacity: 0;
+    }
+}
+
+.animate-scan-laser {
+    position: absolute;
+    animation: scan 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    background: linear-gradient(to bottom, transparent, rgba(0, 163, 255, 0.8), transparent);
+}
