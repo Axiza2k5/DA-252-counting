@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/ort.min.js"></script>
+</head>
+<body style="background: transparent; margin: 0; padding: 0;">
+<script>
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.24.3/dist/';
+    ort.env.wasm.numThreads = 1;
+    var session = null;
+
+    async function initModel() {
+        if (session) return session;
+        try {
+            var buffer = await new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', 'best.onnx', true);
+                xhr.responseType = 'arraybuffer';
+                xhr.onload = function() {
+                    if (xhr.status === 0 || xhr.status === 200) resolve(xhr.response);
+                    else reject(new Error('XHR status ' + xhr.status));
+                };
+                xhr.onerror = function() { reject(new Error('XHR network error')); };
+                xhr.send();
+            });
+            session = await ort.InferenceSession.create(buffer, { executionProviders: ['wasm'] });
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SYS', status: 'ready' }));
+            return session;
+        } catch(e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'ERROR', message: 'Model load: ' + (e.message || e.toString())
+            }));
+        }
+    }
+
+    function preprocess(imageElement) {
+        var targetSize = 640;
+        var imgW = imageElement.naturalWidth || imageElement.width;
+        var imgH = imageElement.naturalHeight || imageElement.height;
+        var scale = Math.min(targetSize / imgW, targetSize / imgH);
+        var newW = Math.round(imgW * scale);
+        var newH = Math.round(imgH * scale);
+        var padX = Math.round((targetSize - newW) / 2);
+        var padY = Math.round((targetSize - newH) / 2);
+
+        var canvas = document.createElement('canvas');
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        var ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = 'rgb(114, 114, 114)';
+        ctx.fillRect(0, 0, targetSize, targetSize);
+        ctx.drawImage(imageElement, padX, padY, newW, newH);
+
+        var imgData = ctx.getImageData(0, 0, targetSize, targetSize);
+        var pixels = imgData.data;
+        var float32Data = new Float32Array(3 * targetSize * targetSize);
+        for (var c = 0; c < 3; c++) {
+            for (var i = 0; i < targetSize * targetSize; i++) {
+                float32Data[c * targetSize * targetSize + i] = pixels[i * 4 + c] / 255.0;
+            }
+        }
+        return {
+            tensor: new ort.Tensor('float32', float32Data, [1, 3, targetSize, targetSize]),
+            scale: scale, padX: padX, padY: padY
+        };
+    }
+
+    document.addEventListener("message", async function(event) {
+        try {
+            var payload = JSON.parse(event.data);
+
+            if (payload.type === 'INIT') {
+                await initModel();
+            }
+
+            if (payload.type === 'INFER') {
+                if (!session) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: 'Session chưa sẵn sàng' }));
+                    return;
+                }
+
+                var img = new Image();
+                img.onload = async function() {
+                    var preprocessed = preprocess(img);
+                    var feeds = {};
+                    feeds[session.inputNames[0]] = preprocessed.tensor;
+
+                    var startTime = performance.now();
+                    var output = await session.run(feeds);
+                    var latency = Math.round(performance.now() - startTime);
+
+                    var outputTensor = output[session.outputNames[0]];
+                    var data = outputTensor.data;
+                    var dims = outputTensor.dims;
+
+                    var numDetections = dims[1];
+                    var detStride = dims[2];
+                    var CONF_THRESHOLD = 0.5;
+                    var resultBoxes = [];
+
+                    for (var i = 0; i < numDetections; i++) {
+                        var offset = i * detStride;
+                        var x1_raw = data[offset + 0];
+                        var y1_raw = data[offset + 1];
+                        var x2_raw = data[offset + 2];
+                        var y2_raw = data[offset + 3];
+                        var conf   = data[offset + 4];
+
+                        if (conf < CONF_THRESHOLD) continue;
+                        if (x1_raw === 0 && y1_raw === 0 && x2_raw === 0 && y2_raw === 0) continue;
+
+                        var x1 = (x1_raw - preprocessed.padX) / preprocessed.scale;
+                        var y1 = (y1_raw - preprocessed.padY) / preprocessed.scale;
+                        var x2 = (x2_raw - preprocessed.padX) / preprocessed.scale;
+                        var y2 = (y2_raw - preprocessed.padY) / preprocessed.scale;
+
+                        resultBoxes.push({ x1: x1, y1: y1, x2: x2, y2: y2, conf: conf });
+                    }
+
+                    var canvas = document.createElement('canvas');
+                    var origW = img.naturalWidth || img.width;
+                    var origH = img.naturalHeight || img.height;
+                    canvas.width = origW;
+                    canvas.height = origH;
+                    var ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, origW, origH);
+
+                    for (var b = 0; b < resultBoxes.length; b++) {
+                        var box = resultBoxes[b];
+                        var bx = Math.max(0, box.x1);
+                        var by = Math.max(0, box.y1);
+                        var bw = Math.min(origW, box.x2) - bx;
+                        var bh = Math.min(origH, box.y2) - by;
+
+                        ctx.strokeStyle = '#2dd4bf';
+                        ctx.lineWidth = Math.max(2, Math.min(origW, origH) / 300);
+                        ctx.strokeRect(bx, by, bw, bh);
+                        ctx.fillStyle = 'rgba(45, 212, 191, 0.4)';
+                        ctx.fillRect(bx, by, bw, bh);
+                    }
+
+                    var base64Str = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'RESULT',
+                        count: resultBoxes.length,
+                        result_image_base64: base64Str,
+                        latency_ms: latency
+                    }));
+                };
+                img.src = payload.image;
+            }
+        } catch(e) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', message: e.toString() }));
+        }
+    });
+
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'SYS', status: 'dom_ready' }));
+    initModel();
+</script>
+</body>
+</html>
