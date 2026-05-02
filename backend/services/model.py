@@ -3,7 +3,7 @@ import base64
 import time
 import io
 from PIL import Image
-from schemas import Detection, PredictResponse
+from database.schemas import Detection, PredictResponse
 
 # Load model once when starting the server
 model = YOLO("best.pt")
