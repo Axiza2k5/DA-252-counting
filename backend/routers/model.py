@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status 
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, status, Request
 from PIL import Image
 import io
 
@@ -6,11 +6,13 @@ from services.model import run_inference
 from database.schemas import PredictResponse
 from database.models import DBUser
 from services.auth import get_current_user
+from utils.limiter import limiter
 
 router = APIRouter(prefix="/predict", tags=["model"])
 
 @router.post("", response_model=PredictResponse)
-async def predict(file: UploadFile = File(...), current_user: DBUser = Depends(get_current_user)):
+@limiter.limit("5/minute")
+async def predict(request: Request, file: UploadFile = File(...), current_user: DBUser = Depends(get_current_user)):
     # Check file type
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only accept JPG, PNG, WEBP")

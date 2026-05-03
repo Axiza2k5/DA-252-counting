@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from database.schemas import UserRegister, Token, TokenWithRefresh, RefreshTokenRequest
@@ -15,11 +15,13 @@ from datetime import timedelta
 
 from database.database import get_db
 from database.models import DBUser
+from utils.limiter import limiter
 
 router = APIRouter(tags=["users"])
 
 @router.post("/register")
-async def register(user_in: UserRegister, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+async def register(request: Request, user_in: UserRegister, db: Session = Depends(get_db)):
     db_user = db.query(DBUser).filter(DBUser.username == user_in.username).first()
     if db_user:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST , detail="Username already registered")
@@ -37,7 +39,8 @@ async def register(user_in: UserRegister, db: Session = Depends(get_db)):
     return {"detail": "User registered successfully"}
 
 @router.post("/login", response_model=TokenWithRefresh)
-async def login_for_refresh_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+async def login_for_refresh_token(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(DBUser).filter(DBUser.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
